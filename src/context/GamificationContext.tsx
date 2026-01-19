@@ -131,7 +131,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
                 .eq('user_id', userId);
 
             if (userBadges) {
-                const formattedBadges = userBadges.map((ub: any) => ({
+                const formattedBadges = (userBadges as unknown as { awarded_at: string, badges: { id: string, name: string, icon: string, description: string } }[]).map((ub) => ({
                     ...ub.badges,
                     unlocked: true,
                     awarded_at: ub.awarded_at

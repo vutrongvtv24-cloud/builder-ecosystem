@@ -38,9 +38,10 @@ export function useNotifications() {
                 .order('created_at', { ascending: false }) // Newest first
                 .limit(20);
 
-            if (data) { // Removed error check for brevity as data is null on error usually
-                setNotifications(data);
-                setUnreadCount(data.filter((n: any) => !n.is_read).length);
+            if (data) {
+                const typedData = data as unknown as Notification[];
+                setNotifications(typedData);
+                setUnreadCount(typedData.filter(n => !n.is_read).length);
             }
         };
 

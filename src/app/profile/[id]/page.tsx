@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Trophy, MessageSquare, Users } from "lucide-react";
+import { Trophy, MessageSquare, Users } from "lucide-react";
 import { PostCard } from "@/components/feed/PostCard";
 import { usePosts } from "@/hooks/usePosts";
 import Link from "next/link";
@@ -17,19 +16,48 @@ import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { ChangeNameDialog } from "@/components/profile/ChangeNameDialog";
 import { ChangeAvatarDialog } from "@/components/profile/ChangeAvatarDialog";
 import { FollowButton } from "@/components/profile/FollowButton";
-import { useFollow } from "@/hooks/useFollow";
+
+interface ProfileBadge {
+    id: string;
+    name: string;
+    icon: string;
+    description?: string;
+}
+
+interface ProfilePost {
+    id: string;
+    content: string;
+    image_url?: string;
+    likes_count: number;
+    comments_count: number;
+    created_at: string;
+}
+
+interface ProfileData {
+    id: string;
+    email: string;
+    full_name: string;
+    avatar_url: string;
+    bio?: string;
+    level: number;
+    xp: number;
+    role: string;
+    created_at: string;
+    followers_count?: number;
+    following_count?: number;
+    badges: ProfileBadge[];
+    posts: ProfilePost[];
+}
 
 export default function ProfilePage() {
     const params = useParams();
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [userCanChangeName, setUserCanChangeName] = useState(false);
     const [userCanChangeAvatar, setUserCanChangeAvatar] = useState(false);
     const { user: authUser } = useSupabaseAuth();
-    const { toggleLike, posts: allPosts } = usePosts(); // Re-use like logic, though inefficient to fetch all posts again. 
-    // Optimization: Refactor usePosts to separate toggleLike logic or allow initial data hydration.
-    // For now, we will map the profile posts to include 'liked_by_user' status from the main hook if possible,
-    // or simplified: just render them. 
+    const { toggleLike } = usePosts();
+
 
     // Better Approach for Posts in Profile: 
     // We fetched raw posts in fetchProfile. We need to know if current user liked them.
@@ -46,12 +74,10 @@ export default function ProfilePage() {
     useEffect(() => {
         const checkPermissions = async () => {
             if (authUser?.id && params?.id && authUser.id === params.id) {
-                console.log('[ProfilePage] Checking permissions for user:', authUser.id);
                 const [canName, canAvatar] = await Promise.all([
                     canChangeName(authUser.id),
                     canChangeAvatar(authUser.id)
                 ]);
-                console.log('[ProfilePage] canChangeName:', canName, 'canChangeAvatar:', canAvatar);
                 setUserCanChangeName(canName);
                 setUserCanChangeAvatar(canAvatar);
             }
@@ -61,7 +87,7 @@ export default function ProfilePage() {
 
     const loadProfile = async (id: string) => {
         setLoading(true);
-        const data = await fetchProfile(id);
+        const data = await fetchProfile(id) as ProfileData | null;
         setProfile(data);
         setLoading(false);
     };
@@ -107,7 +133,7 @@ export default function ProfilePage() {
                                     )}
                                     {/* Badges next to name */}
                                     <div className="flex gap-1">
-                                        {profile.badges.slice(0, 5).map((badge: any) => (
+                                        {profile.badges.slice(0, 5).map((badge: ProfileBadge) => (
                                             <span key={badge.id} className="text-lg" title={badge.name}>{badge.icon}</span>
                                         ))}
                                     </div>
@@ -163,7 +189,7 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-4 gap-2">
-                                {profile.badges.map((badge: any) => (
+                                {profile.badges.map((badge: ProfileBadge) => (
                                     <div key={badge.id} className="aspect-square bg-secondary/50 rounded-lg flex items-center justify-center text-2xl" title={badge.name}>
                                         {badge.icon}
                                     </div>
@@ -200,12 +226,13 @@ export default function ProfilePage() {
                         </TabsList>
                         <TabsContent value="posts" className="space-y-4 mt-6">
                             {profile.posts.length > 0 ? (
-                                profile.posts.map((post: any) => (
+                                profile.posts.map((post: ProfilePost) => (
                                     <PostCard
                                         key={post.id}
                                         post={{
                                             ...post,
                                             user: {
+                                                id: profile.id,
                                                 name: profile.full_name,
                                                 avatar: profile.avatar_url,
                                                 handle: "@user",
@@ -214,12 +241,9 @@ export default function ProfilePage() {
                                             likes: post.likes_count,
                                             comments: post.comments_count,
                                             time: new Date(post.created_at).toLocaleDateString(),
-                                            liked_by_user: false // Placeholder, would need complex query or client check
+                                            liked_by_user: false
                                         }}
-                                        onToggleLike={(id) => {
-                                            // Simple console log or minimal implementation since context is separated
-                                            console.log("Like from profile page not fully connected yet");
-                                        }}
+                                        onToggleLike={() => toggleLike(post.id, false)}
                                     />
                                 ))
                             ) : (

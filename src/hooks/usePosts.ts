@@ -22,10 +22,11 @@ export type UI_Post = {
     comments: number;
     time: string;
     liked_by_user: boolean;
-    image_url?: string; // Add optional image_url
+    image_url?: string;
+    status?: 'approved' | 'pending' | 'rejected';
 };
 
-export function usePosts() {
+export function usePosts(communityId?: string) {
     const [posts, setPosts] = useState<UI_Post[]>([]);
     const [loading, setLoading] = useState(true);
     const { user } = useSupabaseAuth();
@@ -33,10 +34,8 @@ export function usePosts() {
 
     const fetchPosts = useCallback(async () => {
         try {
-            // Don't set loading to true here to avoid flickering on updates
-
-            // 1. Fetch Posts
-            const { data: postsData, error: postsError } = await supabase
+            // 1. Build Query
+            let query = supabase
                 .from("posts")
                 .select(`
                     *,
@@ -49,6 +48,15 @@ export function usePosts() {
                     )
                 `)
                 .order("created_at", { ascending: false });
+
+            if (communityId) {
+                query = query.eq('community_id', communityId);
+            } else {
+                // Global feed shows posts without community or public approved posts
+                query = query.is('community_id', null);
+            }
+
+            const { data: postsData, error: postsError } = await query;
 
             if (postsError) throw postsError;
             if (!postsData) return;
@@ -67,7 +75,24 @@ export function usePosts() {
             }
 
             // 3. Transform Data
-            const formattedPosts: UI_Post[] = postsData.map((post: any) => ({
+            type PostWithProfile = {
+                id: string;
+                user_id: string;
+                content: string;
+                likes_count: number;
+                comments_count: number;
+                created_at: string;
+                image_url?: string;
+                status?: 'approved' | 'pending' | 'rejected';
+                profiles: {
+                    full_name: string;
+                    avatar_url: string;
+                    role: string;
+                    level: number;
+                } | null;
+            };
+
+            const formattedPosts: UI_Post[] = (postsData as unknown as PostWithProfile[]).map((post) => ({
                 id: post.id,
                 user: {
                     id: post.user_id,
@@ -81,17 +106,17 @@ export function usePosts() {
                 comments: post.comments_count || 0,
                 time: new Date(post.created_at).toLocaleDateString(),
                 liked_by_user: likedPostIds.has(post.id),
-                image_url: post.image_url
+                image_url: post.image_url,
+                status: post.status
             }));
 
-            // Filter out any potential duplicates or bad data if needed
             setPosts(formattedPosts);
         } catch (err) {
             console.error("Error fetching posts:", err);
         } finally {
             setLoading(false);
         }
-    }, [supabase, user]);
+    }, [supabase, user, communityId]);
 
     // Initial Fetch
     useEffect(() => {
@@ -101,15 +126,20 @@ export function usePosts() {
     // Realtime Subs
     useEffect(() => {
         const channel = supabase
-            .channel('public:posts_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
+            .channel(`public:posts_realtime:${communityId || 'global'}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'posts',
+                filter: communityId ? `community_id=eq.${communityId}` : 'community_id=is.null'
+            }, () => fetchPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => fetchPosts())
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchPosts, supabase]);
+    }, [fetchPosts, supabase, communityId]);
 
 
     const createPost = async (content: string, imageFile?: File) => {
@@ -132,6 +162,7 @@ export function usePosts() {
             user_id: user.id,
             content: content,
             image_url: imageUrl,
+            community_id: communityId || null
         });
         if (error) throw error;
     };
@@ -167,5 +198,5 @@ export function usePosts() {
         }
     };
 
-    return { posts, loading, createPost, toggleLike };
+    return { posts, loading, createPost, toggleLike, fetchPosts };
 }

@@ -29,10 +29,13 @@ export function useLeaderboard() {
             if (error) {
                 console.error("Error fetching leaderboard:", error);
             } else {
-                setLeaders(data.map((user: any) => ({
-                    ...user,
-                    full_name: user.full_name || "Anonymous Builder",
-                    title: `Level ${user.level} Builder` // Simple title logic for now
+                setLeaders((data as Record<string, unknown>[]).map((user) => ({
+                    id: user.id as string,
+                    full_name: (user.full_name as string) || "Anonymous Builder",
+                    avatar_url: user.avatar_url as string,
+                    level: user.level as number,
+                    xp: user.xp as number,
+                    title: `Level ${user.level} Builder`
                 })));
             }
             setLoading(false);

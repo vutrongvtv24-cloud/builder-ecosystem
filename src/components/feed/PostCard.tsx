@@ -63,7 +63,12 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
         if (error) {
             console.error("Error fetching comments:", error);
         } else {
-            setComments(data.map((c: any) => ({
+            setComments((data as unknown as {
+                id: string;
+                content: string;
+                created_at: string;
+                profiles: { full_name: string; avatar_url: string } | null;
+            }[]).map((c) => ({
                 id: c.id,
                 content: c.content,
                 created_at: c.created_at,
@@ -134,7 +139,14 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
                                 </span>
                             )}
                         </Link>
-                        <div className="text-xs text-muted-foreground">{post.time}</div>
+                        <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">{post.time}</div>
+                            {post.status === 'pending' && (
+                                <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20">
+                                    Pending Approval
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8">

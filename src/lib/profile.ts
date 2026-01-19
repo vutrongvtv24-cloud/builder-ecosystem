@@ -1,4 +1,3 @@
-
 import { createClient } from "@/lib/supabase/client";
 
 export async function fetchProfile(userId: string) {
@@ -27,8 +26,8 @@ export async function fetchProfile(userId: string) {
         `)
         .eq('user_id', userId);
 
-    const badges = userBadges?.map((ub: any) => ({
-        ...ub.badges,
+    const badges = userBadges?.map((ub: Record<string, unknown>) => ({
+        ...(ub.badges as Record<string, unknown>),
         unlocked: true,
         awarded_at: ub.awarded_at
     })) || [];
@@ -106,12 +105,8 @@ export async function canChangeName(userId: string): Promise<boolean> {
         .eq('id', userId)
         .single();
 
-    // Log for debugging
-    console.log('[canChangeName] userId:', userId, 'profile:', profile, 'error:', error?.message);
-
     // If there's an error (e.g., column doesn't exist) or profile is null, allow change
     if (error || !profile) {
-        console.log('[canChangeName] Error or no profile, allowing change');
         return true;
     }
 
@@ -131,12 +126,8 @@ export async function canChangeAvatar(userId: string): Promise<boolean> {
         .eq('id', userId)
         .single();
 
-    // Log for debugging
-    console.log('[canChangeAvatar] userId:', userId, 'profile:', profile, 'error:', error?.message);
-
     // If there's an error (e.g., column doesn't exist) or profile is null, allow change
     if (error || !profile) {
-        console.log('[canChangeAvatar] Error or no profile, allowing change');
         return true;
     }
 

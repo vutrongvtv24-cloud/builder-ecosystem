@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Status - Builder Ecosystem</title>
+    <!-- GitHub Markdown CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+    <style>
+        body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+            background-color: #f6f8fa;
+        }
+        @media (max-width: 767px) {
+            body {
+                padding: 15px;
+            }
+        }
+        .markdown-body {
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 8px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <article class="markdown-body" id="content">
+        <!-- Markdown rendered content -->
+    </article>
+
+    <!-- Marked Library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Raw Markdown Data -->
+    <script id="raw-markdown" type="text/markdown">
+# 📊 Báo Cáo Trạng Thái Dự Án: Builder Ecosystem
+
+> **Cập nhật lần cuối:** 19/01/2026 21:50  
+> **Version:** 1.1.0 (Community System Update)  
+> **Repository:** https://github.com/vutrongvtv24-cloud/builder-ecosystem
+
+---
+
+## 1. 🏗️ Tổng Quan Dự Án
+
+**Builder Ecosystem** là một nền tảng mạng xã hội gamified dành cho cộng đồng học lập trình. Nền tảng kết hợp các yếu tố RPG (Level, XP, Badges) với tính năng social (Groups, Posts, Chat) để tạo động lực học tập.
+
+### 🔄 Recent Updates (v1.1.0)
+- **Community System:** Transform Classes into interactive Facebook-like Groups.
+- **Moderation:** Implementation of Admin approval workflow for members and posts.
+- **UI Enhancement:** Improved text contrast and accessibility.
+- **Performance:** Optimized feed rendering and component reuse.
+
+### Công Nghệ (Tech Stack)
+
+| Layer | Technology |
+|-------|------------|
+| **Framework** | Next.js 16.1.3 (App Router + Turbopack) |
+| **Language** | TypeScript 5.x |
+| **Runtime** | Node.js ≥20 |
+| **UI Library** | React 19.2.3 |
+| **Styling** | Tailwind CSS 3.4.19 + Shadcn/UI |
+| **Icons** | Lucide React 0.562.0 |
+| **Auth** | Supabase Auth (Google OAuth) |
+| **Database** | Supabase (PostgreSQL + Realtime) |
+| **Storage** | Supabase Storage (Images, Avatars) |
+| **State** | React Context API |
+| **Theme** | next-themes (Dark/Light Mode) |
+| **Notifications** | Sonner (Toast) |
+
+---
+
+## 2. 📁 Cấu Trúc Thư Mục
+
+```
+web/
+├── src/
+│   ├── app/                   # Pages: auth, class, space, profile...
+│   ├── components/            # Components: feed, gamification, ui...
+│   ├── hooks/                 # Hooks: usePosts, useSupabaseAuth...
+│   ├── lib/                   # Utils: supabase client
+│   └── types/                 # TypeScript interfaces
+├── supabase/                  # SQL Migrations & Schema
+└── ...config files
+```
+
+---
+
+## 3. 🗄️ Database Schema
+
+### Tables Overview
+
+```sql
+-- Core Tables
+profiles (id, email, full_name, avatar_url, bio, level, xp, role, ...)
+
+-- Community System (New)
+communities (id, slug, name, description, icon, required_level, ...)
+
+community_members (id, community_id, user_id, role, status, joined_at)
+-- roles: admin, moderator, member
+-- status: pending, approved, rejected
+
+posts (id, user_id, content, image_url, community_id, status, ...)
+-- status: approved, pending, rejected
+
+-- Social
+likes, comments, follows, notifications...
+```
+
+### Database Triggers
+
+| Trigger | Description | XP Reward |
+|---------|-------------|-----------|
+| `on_post_created` | Award XP for posting | +10 XP |
+| `on_like_created` | Award XP for liking | +2 XP / +5 XP |
+| `on_comment_created` | Award XP for commenting | +3 XP / +5 XP |
+| `auto_level_up` | Level up when XP threshold reached | - |
+
+---
+
+## 4. ✅ Trạng Thái Chức Năng
+
+### Đã Hoàn Thành ✅
+
+#### Core & UI
+- [x] Next.js 16 + TypeScript + Tailwind CSS setup
+- [x] Responsive 3-column layout
+- [x] Dark/Light mode toggle
+- [x] Premium UI với glassmorphism effects
+
+#### Community & Groups (New)
+- [x] Dynamic Class/Group Pages
+- [x] Membership System (Join/Leave)
+- [x] Admin Dashboard for each Group
+- [x] Member Approval Workflow
+- [x] Post Moderation (Pending/Approve/Reject)
+- [x] Level-gated Posting Access
+
+#### Social Features
+- [x] Global Feed & Group Feed
+- [x] Create/View posts with images
+- [x] Like/Unlike posts
+- [x] Comments on posts
+- [x] Realtime notifications
+- [x] Search (posts & users)
+
+#### Gamification
+- [x] XP system with multiple sources
+- [x] Progressive leveling (Level × 100 XP)
+- [x] Badge system (auto-award)
+- [x] Leaderboard (realtime)
+- [x] Locked content by level
+
+#### Profile Customization
+- [x] One-time name change
+- [x] One-time avatar upload
+- [x] Badges displayed next to name
+
+---
+
+## 5. 📋 Environment Variables
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+---
+
+## 6. 🚀 Deployment
+
+### GitHub Repository
+- **Status:** ✅ Code pushed successfully
+
+### Vercel Deployment
+- **Status:** ⚠️ Pending Manual Configuration (Env Vars required)
+
+---
+
+## 7. 🔮 Roadmap (Pending Features)
+
+### Phase 2 - Monetization
+- [ ] Stripe/PayPal integration
+- [ ] Premium subscription plans
+
+### Phase 3 - Advanced Features
+- [ ] Group chat
+- [ ] Video upload support
+- [ ] Push notifications
+- [ ] Admin dashboard
+
+---
+
+*Generated by Antigravity AI Assistant*
+    </script>
+
+    <script>
+        const rawMarkdown = document.getElementById('raw-markdown').textContent;
+        document.getElementById('content').innerHTML = marked.parse(rawMarkdown);
+    </script>
+</body>
+</html>

@@ -74,22 +74,3 @@ export const MOCK_USER = {
         { name: "Legend", icon: "👑", unlocked: false },
     ]
 };
-
-export const MOCK_POSTS = [
-    {
-        id: 1,
-        user: MOCK_USER,
-        content: "Just finished the implementation of the new Vibe Coding module! The glassmorphism effect is looking 🔥",
-        likes: 24,
-        comments: 5,
-        time: "2h ago",
-    },
-    {
-        id: 2,
-        user: { ...MOCK_USER, name: "Sarah Design", handle: "@sarah" },
-        content: "Is anyone looking for a co-founder for a SaaS project? I have expertise in 'Magician' (Offer Design).",
-        likes: 12,
-        comments: 8,
-        time: "4h ago",
-    }
-];
