@@ -1,0 +1,7 @@
+{
+    "installCommand": "npm install --legacy-peer-deps",
+    "buildCommand": "next build",
+    "ignoreCommand": "echo 'Checking ignore...'",
+    "framework": "nextjs",
+    "outputDirectory": ".next"
+}
