@@ -81,6 +81,59 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
         setIsLoadingComments(false);
     };
 
+    // Realtime Comments Subscription
+    useEffect(() => {
+        // Only subscribe if comments section is open or we want to update the counter
+        const channel = supabase
+            .channel(`public:comments:${post.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'comments',
+                    filter: `post_id=eq.${post.id}`
+                },
+                async (payload) => {
+                    // Update counter regardless
+                    setLocalCommentsCount(prev => prev + 1);
+
+                    // If comments are open, we need to fetch user details for the new comment
+                    if (showComments) {
+                        const newComment = payload.new as { id: string, content: string, created_at: string, user_id: string };
+
+                        // Fetch profile for the new comment
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('full_name, avatar_url')
+                            .eq('id', newComment.user_id)
+                            .single();
+
+                        const commentWithUser: Comment = {
+                            id: newComment.id,
+                            content: newComment.content,
+                            created_at: newComment.created_at,
+                            user: {
+                                name: profile?.full_name || "Anonymous",
+                                avatar: profile?.avatar_url || "",
+                            }
+                        };
+
+                        setComments(prev => {
+                            // Avoid duplicate if it was our own comment (optimistically added)
+                            if (prev.some(c => c.id === newComment.id)) return prev;
+                            return [...prev, commentWithUser];
+                        });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [post.id, showComments, supabase]);
+
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!commentText.trim() || !user) return;

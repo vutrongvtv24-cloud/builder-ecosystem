@@ -54,11 +54,7 @@ export const RPG_CLASSES = [
 ];
 
 export const SPACES = [
-    { name: "News", path: "/space/news", locked: false, requiredLevel: 0 },
-    { name: "Job Market", path: "/space/job-market", locked: false, requiredLevel: 3 },
-    { name: "Vibe Coding", path: "/space/vibe-coding", locked: true, requiredLevel: 5 },
-    { name: "Show Your Win", path: "/space/wins", locked: false, requiredLevel: 0 },
-    { name: "Awards", path: "/space/awards", locked: false, requiredLevel: 0 },
+    { name: "Youtube Sharing", path: "/space/youtube-sharing", locked: false, requiredLevel: 0 },
 ];
 
 export const MOCK_USER = {

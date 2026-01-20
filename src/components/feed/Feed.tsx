@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { usePosts } from "@/hooks/usePosts";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -8,10 +8,25 @@ import { PostCard } from "./PostCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CreatePost } from "./CreatePost";
+import { useInView } from "react-intersection-observer";
 
-export function Feed() {
-    const { posts, loading, createPost, toggleLike } = usePosts();
+interface FeedProps {
+    communityId?: string;
+}
+
+export function Feed({ communityId }: FeedProps) {
+    const { posts, loading, hasMore, loadMore, createPost, toggleLike } = usePosts(communityId);
     const { user } = useSupabaseAuth();
+
+    // Infinite Scroll Ref
+    // When this element comes into view, we trigger loadMore
+    const { ref, inView } = useInView();
+
+    useEffect(() => {
+        if (inView && hasMore) {
+            loadMore();
+        }
+    }, [inView, hasMore, loadMore]);
 
     const handlePost = async (content: string, image?: File) => {
         try {
@@ -87,6 +102,19 @@ export function Feed() {
                     onToggleLike={toggleLike}
                 />
             ))}
+
+            {/* Loading Indicator for Infinite Scroll */}
+            {hasMore && (
+                <div ref={ref} className="flex justify-center p-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            )}
+
+            {!hasMore && posts.length > 0 && (
+                <p className="text-center text-muted-foreground text-sm py-8">
+                    You've reached the end! 🎉
+                </p>
+            )}
         </div>
     );
 }

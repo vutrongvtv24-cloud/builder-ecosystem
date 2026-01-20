@@ -35,7 +35,7 @@ export default async function SpacePage({
                 )}
             </div>
 
-            <Feed />
+            <Feed communityId={slug} />
         </div>
     );
 }

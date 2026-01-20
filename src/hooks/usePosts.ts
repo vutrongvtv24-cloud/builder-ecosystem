@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useSupabaseAuth } from "./useSupabaseAuth";
 import { Database } from "@/types/supabase";
@@ -26,14 +26,68 @@ export type UI_Post = {
     status?: 'approved' | 'pending' | 'rejected';
 };
 
-export function usePosts(communityId?: string) {
+const PAGE_SIZE = 5; // Load 5 posts at a time
+
+export function usePosts(communitySlug?: string) {
     const [posts, setPosts] = useState<UI_Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(true);
     const { user } = useSupabaseAuth();
     const supabase = createClient();
+    const pageRef = useRef(0);
 
-    const fetchPosts = useCallback(async () => {
+    // Store resolved UUID
+    const [communityId, setCommunityId] = useState<string | null>(null);
+
+    // Resolve Slug to ID
+    useEffect(() => {
+        const resolveCommunityId = async () => {
+            if (!communitySlug) {
+                setCommunityId(null);
+                return;
+            }
+
+            // Check if it's already a UUID (simple check length > 20)
+            if (communitySlug.length > 20 && communitySlug.includes('-')) {
+                setCommunityId(communitySlug);
+                return;
+            }
+
+            // Fetch ID from slug
+            const { data, error } = await supabase
+                .from('communities')
+                .select('id')
+                .eq('slug', communitySlug)
+                .single();
+
+            if (data) {
+                setCommunityId(data.id);
+            } else {
+                console.warn("Community not found for slug:", communitySlug);
+                setCommunityId(null); // Fallback to global or empty?
+            }
+        };
+
+        resolveCommunityId();
+    }, [communitySlug, supabase]);
+
+    const fetchPosts = useCallback(async (isLoadMore = false) => {
+        // If communitySlug is provided but not yet resolved to ID, wait.
+        if (communitySlug && !communityId) {
+            // Exception: if slug failed to resolve (invalid slug), we might stop here to show empty.
+            // But for now, let's just return if we are still "loading" the ID.
+            return;
+        }
+
+        if (!isLoadMore) {
+            setLoading(true);
+            pageRef.current = 0; // Reset page
+        }
+
         try {
+            const start = pageRef.current * PAGE_SIZE;
+            const end = start + PAGE_SIZE - 1;
+
             // 1. Build Query
             let query = supabase
                 .from("posts")
@@ -47,30 +101,50 @@ export function usePosts(communityId?: string) {
                         level
                     )
                 `)
-                .order("created_at", { ascending: false });
+                .order("created_at", { ascending: false })
+                .range(start, end);
 
             if (communityId) {
                 query = query.eq('community_id', communityId);
+            } else if (communitySlug) {
+                // Slug provided but ID not solved (should cause empty return or loading)
+                // Actually handled by early return above.
             } else {
-                // Global feed shows posts without community or public approved posts
+                // Global feed shows posts without community
                 query = query.is('community_id', null);
             }
 
             const { data: postsData, error: postsError } = await query;
 
             if (postsError) throw postsError;
-            if (!postsData) return;
+
+            if (!postsData || postsData.length === 0) {
+                if (isLoadMore) {
+                    setHasMore(false);
+                } else {
+                    setPosts([]);
+                }
+                return;
+            }
+
+            if (postsData.length < PAGE_SIZE) {
+                setHasMore(false);
+            }
 
             // 2. Check which posts user has liked (if logged in)
             let likedPostIds = new Set<string>();
             if (user) {
-                const { data: likesData } = await supabase
-                    .from("likes")
-                    .select("post_id")
-                    .eq("user_id", user.id);
+                const postIds = postsData.map(p => p.id);
+                if (postIds.length > 0) {
+                    const { data: likesData } = await supabase
+                        .from("likes")
+                        .select("post_id")
+                        .in("post_id", postIds)
+                        .eq("user_id", user.id);
 
-                if (likesData) {
-                    likesData.forEach(l => likedPostIds.add(l.post_id));
+                    if (likesData) {
+                        likesData.forEach(l => likedPostIds.add(l.post_id));
+                    }
                 }
             }
 
@@ -110,7 +184,12 @@ export function usePosts(communityId?: string) {
                 status: post.status
             }));
 
-            setPosts(formattedPosts);
+            if (isLoadMore) {
+                setPosts(prev => [...prev, ...formattedPosts]);
+            } else {
+                setPosts(formattedPosts);
+            }
+
         } catch (err) {
             console.error("Error fetching posts:", err);
         } finally {
@@ -118,28 +197,50 @@ export function usePosts(communityId?: string) {
         }
     }, [supabase, user, communityId]);
 
+    const loadMore = useCallback(() => {
+        if (!hasMore || loading) return;
+        pageRef.current += 1;
+        fetchPosts(true);
+    }, [hasMore, loading, fetchPosts]);
+
     // Initial Fetch
     useEffect(() => {
-        fetchPosts();
+        fetchPosts(false);
     }, [fetchPosts]);
 
-    // Realtime Subs
+    // Realtime for NEW posts only (insert at top) and updates
+    // Note: This logic is tricky with infinite scroll. 
+    // Simplified strategy: Listen for updates to update like/comment counts of visible posts.
+    // For new posts, optionally show a "New posts available" button or insert if on page 0.
     useEffect(() => {
         const channel = supabase
             .channel(`public:posts_realtime:${communityId || 'global'}`)
             .on('postgres_changes', {
-                event: '*',
+                event: 'UPDATE', // Only listen for updates (likes/comments changes)
                 schema: 'public',
                 table: 'posts',
                 filter: communityId ? `community_id=eq.${communityId}` : 'community_id=is.null'
-            }, () => fetchPosts())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => fetchPosts())
+            }, (payload) => {
+                // Update local state if the post exists in our list
+                setPosts(prev => prev.map(p => {
+                    if (p.id === payload.new.id) {
+                        const newPost = payload.new as any;
+                        return {
+                            ...p,
+                            likes: newPost.likes_count,
+                            comments: newPost.comments_count
+                        };
+                    }
+                    return p;
+                }));
+            })
+            // .on('postgres_changes', { event: 'INSERT', ... }) -> Handled by manual refresh or separate logic to avoid messing up scroll
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchPosts, supabase, communityId]);
+    }, [supabase, communityId]);
 
 
     const createPost = async (content: string, imageFile?: File) => {
@@ -158,13 +259,18 @@ export function usePosts(communityId?: string) {
             imageUrl = supabase.storage.from('post_images').getPublicUrl(filePath).data.publicUrl;
         }
 
-        const { error } = await supabase.from("posts").insert({
+        const { error, data } = await supabase.from("posts").insert({
             user_id: user.id,
             content: content,
             image_url: imageUrl,
             community_id: communityId || null
-        });
+        }).select().single();
+
         if (error) throw error;
+
+        // Optimistically add to top and reset page
+        // Actually, easiest is just to refetch page 0
+        fetchPosts(false);
     };
 
     const toggleLike = async (postId: string, currentLikeStatus: boolean) => {
@@ -194,9 +300,9 @@ export function usePosts(communityId?: string) {
             }
         } catch (error) {
             console.error("Error toggling like:", error);
-            fetchPosts(); // Revert/Sync on error
+            // Revert handled by realtime or next fetch
         }
     };
 
-    return { posts, loading, createPost, toggleLike, fetchPosts };
+    return { posts, loading, hasMore, loadMore, createPost, toggleLike, fetchPosts };
 }
