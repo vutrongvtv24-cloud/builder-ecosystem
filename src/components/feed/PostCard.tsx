@@ -5,11 +5,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageSquare, Share2, MoreHorizontal, Send } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, Send, Check, X, ThumbsUp, Lock } from "lucide-react";
 import { UI_Post } from "@/hooks/usePosts";
 import { createClient } from "@/lib/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface PostCardProps {
     post: UI_Post;
@@ -35,7 +36,74 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [localCommentsCount, setLocalCommentsCount] = useState(post.comments);
 
+    // Approval System State
+    const [approvalVotes, setApprovalVotes] = useState(0);
+    const [hasVotedApprove, setHasVotedApprove] = useState(false);
+    const [postStatus, setPostStatus] = useState(post.status || 'approved');
+
     const supabase = createClient();
+    const isAdmin = user?.email === 'vutrongvtv24@gmail.com';
+
+    useEffect(() => {
+        // Only fetch approval stats if post is pending
+        if (postStatus === 'pending' && user) {
+            fetchApprovalStats();
+        }
+    }, [postStatus, user, post.id]);
+
+    const fetchApprovalStats = async () => {
+        // Count votes
+        const { count } = await supabase
+            .from('post_approvals')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+        setApprovalVotes(count || 0);
+
+        // Check if current user voted
+        if (user) {
+            const { data } = await supabase
+                .from('post_approvals')
+                .select('id')
+                .eq('post_id', post.id)
+                .eq('user_id', user.id)
+                .single();
+            setHasVotedApprove(!!data);
+        }
+    };
+
+    const handleAdminAction = async (action: 'approve' | 'reject') => {
+        if (!isAdmin) return;
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+        const { error } = await supabase
+            .from('posts')
+            .update({ status: newStatus })
+            .eq('id', post.id);
+
+        if (!error) {
+            setPostStatus(newStatus);
+            toast.success(`Post ${action}d successfully`);
+        } else {
+            toast.error("Action failed");
+        }
+    };
+
+    const handleVoteApprove = async () => {
+        if (!user || hasVotedApprove) return;
+
+        const { error } = await supabase
+            .from('post_approvals')
+            .insert({ post_id: post.id, user_id: user.id });
+
+        if (!error) {
+            setHasVotedApprove(true);
+            setApprovalVotes(prev => prev + 1);
+            toast.success("Voted to approve!");
+        } else {
+            toast.error("Failed to vote");
+        }
+    };
 
     // Fetch comments when section is opened
     useEffect(() => {
@@ -173,8 +241,48 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
         }
     };
 
+    // If rejected, hide completely (or show to owner/admin only)
+    if (postStatus === 'rejected' && !isAdmin && user?.id !== post.user.id) {
+        return null; // Don't render rejected posts for normal users
+    }
+
     return (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-border/60">
+            {postStatus === 'pending' && (
+                <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-yellow-600 text-xs font-medium flex items-center gap-1">
+                            <Lock className="h-3 w-3" /> Pending Approval
+                        </span>
+                        <span className="text-xs text-muted-foreground">• {approvalVotes} community votes</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {isAdmin ? (
+                            <>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600" onClick={() => handleAdminAction('approve')}>
+                                    <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-600" onClick={() => handleAdminAction('reject')}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </>
+                        ) : (
+                            !hasVotedApprove && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-xs gap-1"
+                                    onClick={handleVoteApprove}
+                                >
+                                    <ThumbsUp className="h-3 w-3" /> Vote OK
+                                </Button>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
+
             <CardHeader className="flex flex-row items-start justify-between space-y-0 p-4 pb-2">
                 <div className="flex items-center gap-3">
                     <Link href={`/profile/${post.user.id}`} className="cursor-pointer hover:opacity-80 transition-opacity">
@@ -194,11 +302,6 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
                         </Link>
                         <div className="flex items-center gap-2">
                             <div className="text-xs text-muted-foreground">{post.time}</div>
-                            {post.status === 'pending' && (
-                                <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20">
-                                    Pending Approval
-                                </span>
-                            )}
                         </div>
                     </div>
                 </div>
