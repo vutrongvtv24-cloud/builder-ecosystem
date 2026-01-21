@@ -16,6 +16,7 @@ import {
 import { UI_Post } from "@/hooks/usePosts";
 import { createClient } from "@/lib/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useLanguage } from "@/context/LanguageContext";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useGamification } from "@/context/GamificationContext";
@@ -55,6 +56,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
     const supabase = createClient();
     const isAdmin = user?.email === 'vutrongvtv24@gmail.com';
     const { level } = useGamification();
+    const { t, language } = useLanguage();
 
     const minLevel = post.min_level_to_view || 0;
     const isAuthor = user?.id === post.user.id;
@@ -330,9 +332,9 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                 <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="text-yellow-600 text-xs font-medium flex items-center gap-1">
-                            <Lock className="h-3 w-3" /> Pending Approval
+                            <Lock className="h-3 w-3" /> {language === 'vi' ? 'Đang chờ duyệt' : 'Pending Approval'}
                         </span>
-                        <span className="text-xs text-muted-foreground">• {approvalVotes} community votes</span>
+                        <span className="text-xs text-muted-foreground">• {approvalVotes} {language === 'vi' ? 'lượt bình chọn' : 'community votes'}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -410,7 +412,9 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                 className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                {isAdmin && !isAuthor ? 'Xóa bài (Admin)' : 'Xóa bài'}
+                                {isAdmin && !isAuthor
+                                    ? (language === 'vi' ? 'Xóa bài (Admin)' : 'Delete (Admin)')
+                                    : t.feed.delete}
                             </DropdownMenuItem>
                         )}
 
@@ -426,7 +430,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                     className="text-orange-600 focus:text-orange-600 focus:bg-orange-50 cursor-pointer"
                                 >
                                     <Ban className="h-4 w-4 mr-2" />
-                                    Block người dùng
+                                    {language === 'vi' ? 'Block người dùng' : 'Block User'}
                                 </DropdownMenuItem>
                             </>
                         )}
@@ -440,7 +444,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                     className="cursor-pointer"
                                 >
                                     <Flag className="h-4 w-4 mr-2" />
-                                    Báo cáo bài viết
+                                    {language === 'vi' ? 'Báo cáo bài viết' : 'Report Post'}
                                 </DropdownMenuItem>
                             </>
                         )}
@@ -461,7 +465,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                 <span className="font-medium text-amber-700">Level {minLevel} Required</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Nâng cấp lên Level {minLevel} để xem nội dung này
+                                {t.community.levelRequired.replace('{level}', String(minLevel))}
                             </p>
                         </div>
                     </div>
@@ -508,7 +512,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                     </Button>
                     <Button variant="ghost" size="sm" className="flex-1 gap-2 text-muted-foreground bg-transparent">
                         <Share2 className="h-4 w-4" />
-                        Share
+                        {t.feed.share}
                     </Button>
                 </div>
 
@@ -518,7 +522,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                         {/* Comment Logic */}
                         <div className="space-y-3 pl-2 border-l-2 border-muted">
                             {isLoadingComments ? (
-                                <p className="text-xs text-muted-foreground">Loading comments...</p>
+                                <p className="text-xs text-muted-foreground">{t.common.loading}</p>
                             ) : comments.length > 0 ? (
                                 comments.map(comment => (
                                     <div key={comment.id} className="text-sm">
@@ -530,7 +534,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-xs text-muted-foreground italic">No comments yet. Be the first!</p>
+                                <p className="text-xs text-muted-foreground italic">{language === 'vi' ? 'Chưa có bình luận. Hãy là người đầu tiên!' : 'No comments yet. Be the first!'}</p>
                             )}
                         </div>
 
@@ -546,7 +550,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                         type="text"
                                         value={commentText}
                                         onChange={(e) => setCommentText(e.target.value)}
-                                        placeholder="Write a comment..."
+                                        placeholder={t.feed.writeComment}
                                         className="flex-1 bg-muted/50 rounded-full px-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                     />
                                     <Button type="submit" size="icon" className="h-8 w-8 rounded-full" disabled={!commentText.trim() || isSubmitting}>
@@ -555,7 +559,7 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                                 </div>
                             </form>
                         ) : (
-                            <p className="text-xs text-center text-muted-foreground">Sign in to comment</p>
+                            <p className="text-xs text-center text-muted-foreground">{language === 'vi' ? 'Đăng nhập để bình luận' : 'Sign in to comment'}</p>
                         )}
                     </div>
                 )}

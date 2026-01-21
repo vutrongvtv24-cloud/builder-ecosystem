@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Image as ImageIcon, X } from "lucide-react";
 import { compressImage } from "@/lib/imageUtils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface CreatePostProps {
     onPost: (content: string, image?: File, title?: string, minLevel?: number) => Promise<void>;
@@ -19,7 +20,8 @@ interface CreatePostProps {
     maxLevel?: number;
 }
 
-export function CreatePost({ onPost, user, placeholder = "What are you building today?", disabled = false, maxLevel = 0 }: CreatePostProps) {
+export function CreatePost({ onPost, user, placeholder, disabled = false, maxLevel = 0 }: CreatePostProps) {
+    const { t, language } = useLanguage();
     const [content, setContent] = useState("");
     const [title, setTitle] = useState("");
     const [minLevel, setMinLevel] = useState(0);
@@ -27,6 +29,9 @@ export function CreatePost({ onPost, user, placeholder = "What are you building 
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Use i18n placeholder if not provided
+    const finalPlaceholder = placeholder || t.feed.shareWhatYouLearned;
 
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -80,14 +85,14 @@ export function CreatePost({ onPost, user, placeholder = "What are you building 
                     <div className="flex-1 space-y-4">
                         <input
                             className="w-full bg-transparent border-none focus:outline-none text-lg font-semibold placeholder:text-muted-foreground mb-2"
-                            placeholder="Post Title (Optional)"
+                            placeholder={language === 'vi' ? "Tiêu đề bài viết (Tùy chọn)" : "Post Title (Optional)"}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             disabled={disabled}
                         />
                         <textarea
                             className="w-full bg-transparent border-none resize-none focus:outline-none text-base text-foreground placeholder:text-muted-foreground min-h-[80px]"
-                            placeholder={placeholder}
+                            placeholder={finalPlaceholder}
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             disabled={disabled}
@@ -126,12 +131,12 @@ export function CreatePost({ onPost, user, placeholder = "What are you building 
                                         disabled={disabled}
                                     >
                                         <ImageIcon className="h-4 w-4 mr-2" />
-                                        Media
+                                        {language === 'vi' ? 'Ảnh' : 'Media'}
                                     </Button>
                                 </div>
 
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
-                                    <span className="whitespace-nowrap">Min Level:</span>
+                                    <span className="whitespace-nowrap">{language === 'vi' ? 'Level tối thiểu:' : 'Min Level:'}</span>
                                     <input
                                         type="number"
                                         min="0"
@@ -145,12 +150,14 @@ export function CreatePost({ onPost, user, placeholder = "What are you building 
                                         }}
                                         className="w-12 bg-transparent text-center border-b border-muted-foreground/50 focus:outline-none focus:border-primary"
                                     />
-                                    <span className="text-xs opacity-70">(Max: {maxLevel})</span>
+                                    <span className="text-xs opacity-70">({language === 'vi' ? 'Tối đa' : 'Max'}: {maxLevel})</span>
                                 </div>
                             </div>
 
                             <Button size="sm" onClick={handleSubmit} disabled={(!content.trim() && !selectedImage && !title.trim()) || isPosting || disabled}>
-                                {isPosting ? "Posting..." : "Post Update"}
+                                {isPosting
+                                    ? (language === 'vi' ? 'Đang đăng...' : 'Posting...')
+                                    : t.feed.post}
                             </Button>
                         </div>
                     </div>
