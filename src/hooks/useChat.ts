@@ -43,7 +43,7 @@ export function useChat() {
 
             // 1. Get Conversation IDs user is in
             const { data: myParticipations } = await supabase
-                .from('max_participants')
+                .from('conversation_participants')
                 .select('conversation_id')
                 .eq('user_id', user.id);
 
@@ -58,7 +58,7 @@ export function useChat() {
             // 2. Get Details of those conversations
             // And specifically, the OTHER participant info
             const { data: allParticipants } = await supabase
-                .from('max_participants')
+                .from('conversation_participants')
                 .select(`
                     conversation_id,
                     user_id,
