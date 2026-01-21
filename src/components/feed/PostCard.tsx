@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageSquare, Share2, MoreHorizontal, Send, Check, X, ThumbsUp, Lock, Trash2, Ban, Flag } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, Send, Check, X, ThumbsUp, Lock, Trash2, Ban, Flag, Edit } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,6 +22,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from "sonner";
 import { useGamification } from "@/context/GamificationContext";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 interface PostCardProps {
     post: UI_Post;
@@ -49,6 +50,12 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [localCommentsCount, setLocalCommentsCount] = useState(post.comments);
     const [isDeleted, setIsDeleted] = useState(false);
+
+    // Edit State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(post.content);
+    const [displayContent, setDisplayContent] = useState(post.content);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Approval System State
     const [approvalVotes, setApprovalVotes] = useState(0);
@@ -91,6 +98,25 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                 .single();
             setHasVotedApprove(!!data);
         }
+    };
+
+    const handleUpdatePost = async () => {
+        if (!editContent.trim()) return;
+        setIsSaving(true);
+        const { error } = await supabase
+            .from('posts')
+            .update({ content: editContent })
+            .eq('id', post.id);
+
+        if (!error) {
+            toast.success("Đã cập nhật bài viết!");
+            setDisplayContent(editContent);
+            setIsEditing(false);
+        } else {
+            console.error(error);
+            toast.error("Lỗi cập nhật bài viết");
+        }
+        setIsSaving(false);
     };
 
     const handleAdminAction = async (action: 'approve' | 'reject') => {
@@ -404,6 +430,22 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
+                        {/* Edit for Author */}
+                        {isAuthor && (
+                            <>
+                                <DropdownMenuItem
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        setIsEditing(true);
+                                    }}
+                                    className="cursor-pointer"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    {language === 'vi' ? 'Sửa bài viết' : 'Edit Post'}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
                         {/* Author or Admin can delete */}
                         {(isAuthor || isAdmin) && (
                             <DropdownMenuItem
@@ -476,11 +518,34 @@ export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: Post
                         {post.title && (
                             <h3 className="font-bold text-lg mb-2 leading-tight">{post.title}</h3>
                         )}
-                        <div className="prose prose-sm dark:prose-invert max-w-none break-words mb-3">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {post.content}
-                            </ReactMarkdown>
-                        </div>
+
+                        {isEditing ? (
+                            <div className="space-y-2 mb-3">
+                                <MarkdownEditor
+                                    value={editContent}
+                                    onChange={setEditContent}
+                                    placeholder={t.feed.shareWhatYouLearned || "Share your thoughts..."}
+                                    disabled={isSaving}
+                                    minHeight="min-h-[100px]"
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                                        {language === 'vi' ? 'Hủy' : 'Cancel'}
+                                    </Button>
+                                    <Button size="sm" onClick={handleUpdatePost} disabled={isSaving}>
+                                        {isSaving
+                                            ? (language === 'vi' ? 'Đang lưu...' : 'Saving...')
+                                            : (language === 'vi' ? 'Lưu' : 'Save')}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="prose prose-sm dark:prose-invert max-w-none break-words mb-3">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {displayContent}
+                                </ReactMarkdown>
+                            </div>
+                        )}
                         {post.image_url && (
                             <div className="relative w-full rounded-md overflow-hidden bg-muted/20">
                                 <img
