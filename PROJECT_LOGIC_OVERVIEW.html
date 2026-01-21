@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng Quan Logic Dự Án - Tulanh Social</title>
+    <!-- Style cho văn bản đẹp giống GitHub -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+    <style>
+        body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+            background-color: #f6f8fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        .markdown-body {
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        /* Style riêng cho sơ đồ mermaid */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background: #fcfcfc;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .feature-box {
+            border: 1px solid #e1e4e8;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            background-color: #f6f8fa;
+        }
+
+        h2 {
+            border-bottom: 2px solid #eaecef;
+            padding-bottom: .3em;
+        }
+    </style>
+</head>
+
+<body>
+    <article class="markdown-body" id="content">
+        <!-- Nội dung sẽ được render tại đây -->
+    </article>
+
+    <!-- Thư viện xử lý Markdown và Vẽ sơ đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+
+    <!-- NỘI DUNG MARKDOWN (CHỈNH SỬA Ở ĐÂY) -->
+    <script id="raw-markdown" type="text/markdown">
+
+# 🗺️ Bản Đồ Logic & Kiến Trúc Dự Án: Tulanh Social
+
+> **Mục tiêu:** Tài liệu này phác thảo toàn bộ cách thức hoạt động của website **Tulanh Social** (Mạng xã hội dành cho Winner & Vozer) một cách trực quan, dễ hiểu nhất cho cả Developer và User.
+
+---
+
+## 1. Tổng Quan: Đây là cái gì?
+
+**Tulanh Social** là một mạng xã hội kết hợp với công cụ phát triển bản thân. Nó không chỉ là nơi để lướt tin (Feed) mà còn là nơi để làm việc (Todo, Journal) và thăng tiến (Gamification).
+
+*   **Đối tượng:** Builders, Makers, Vozer, những người muốn chia sẻ và phát triển.
+*   **Điểm khác biệt:** Cơ chế duyệt bài cộng đồng (Community Vote) và Hệ thống Cấp độ (Level System).
+
+---
+
+## 2. Hành Trình Người Dùng (User Journey)
+
+Khi một người dùng mới truy cập vào website, họ sẽ đi qua các bước sau:
+
+```mermaid
+graph LR
+    A[Khách truy cập] -->|Vào trang chủ| B{Đã đăng nhập?}
+    B -->|Chưa| C[Landing Page]
+    B -->|Rồi| D[News Feed]
+    
+    C -->|Bấm Login| E[Đăng nhập Google]
+    E --> D
+    
+    D --> F[Tương tác]
+    F --> G[Đăng Bài]
+    F --> H[Bình luận / Like]
+    F --> I[Nhắn tin]
+    F --> J[Xài Tool (Todo/Journal)]
+```
+
+---
+
+## 3. Chi Tiết Các Tính Năng Cốt Lõi (Core Logic)
+
+### 🛡️ A. Hệ Thống Duyệt Bài ("Bộ Lọc")
+
+Để tránh rác (spam), bài viết không hiện ngay lập tức mà phải qua "Bộ Lọc".
+
+**Quy tắc "Bộ Lọc":**
+1.  **Admin** có quyền quyết định tối cao (Duyệt/Xóa ngay).
+2.  **Cộng đồng** có quyền biểu quyết (Vote).
+3.  Nếu **> 50%** người dùng active đồng ý -> Bài viết được duyệt tự động.
+
+```mermaid
+sequenceDiagram
+    participant User as Người dùng A
+    participant System as Hệ Thống
+    participant Admin as Admin/Mod
+    participant Community as Cộng Đồng
+
+    User->>System: Đăng bài viết mới
+    System->>System: Gán trạng thái "Chờ duyệt" (Pending)
+    
+    par Xử lý song song
+        Admin->>System: Kiểm tra & Duyệt (Thủ công)
+    and
+        Community->>System: Vote Duyệt bài
+    end
+    
+    alt Nếu Admin duyệt
+        System-->>User: Thông báo: Bài đã lên sóng!
+        System->>Community: Hiển thị bài viết (Public)
+    else Nếu Vote > 50%
+        System-->>User: Thông báo: Cộng đồng đã duyệt bài!
+        System->>Community: Hiển thị bài viết (Public)
+    else Nếu bị Từ chối
+        System-->>User: Bài viết bị từ chối/xóa.
+    end
+```
+
+### 🎮 B. Hệ Thống Gamification (Động Lực)
+
+Làm sao để người dùng chăm chỉ tương tác? Chúng ta dùng **XP (Điểm kinh nghiệm)** và **Level**.
+
+*   **Level 1 (Newbie):** Người mới, chưa có gì (0 XP).
+*   **Level 5 (Huyền thoại):** Cấp tối đa (5000 XP).
+
+**Cách kiếm điểm:**
+| Hành động | Điểm thưởng |
+| :--- | :--- |
+| Đăng bài viết | **+10 XP** |
+| Bình luận dạo | **+5 XP** |
+| Thả tim (Like) | **+2 XP** |
+
+```mermaid
+graph TD
+    A[Hành động User] -->|Tích lũy| B(Tổng XP)
+    B --> C{Kiểm tra Level}
+    C -->|Đủ điểm| D[Lên Cấp!]
+    C -->|Chưa đủ| E[Giữ nguyên]
+    
+    D --> F[Mở khóa tính năng VIP]
+    D --> G[Huy hiệu Profile đẹp hơn]
+```
+
+### 💬 C. Hệ Thống Chat (Nhắn Tin)
+
+Giúp người dùng kết nối riêng tư.
+
+*   **Realtime:** Tin nhắn hiện ngay lập tức không cần F5 (nhờ Supabase Realtime).
+*   **Riêng tư:** Chỉ người trong cuộc trò chuyện mới xem được tin nhắn (Bảo mật RLS).
+
+```mermaid
+sequenceDiagram
+    participant U1 as User A
+    participant DB as Máy Chủ (Supabase)
+    participant U2 as User B
+
+    U1->>DB: Gửi tin nhắn "Hello"
+    DB->>DB: Lưu vào Database
+    DB->>U2: Bắn tín hiệu (Realtime)
+    U2->>U2: Hiển thị "Hello" ngay lập tức
+```
+
+---
+
+## 4. Cấu Trúc Dữ Liệu (Database)
+
+Dữ liệu được lưu trữ trong **Supabase (PostgreSQL)**. Đây là sơ đồ đơn giản hóa các bảng chính:
+
+```mermaid
+erDiagram
+    PROFILES ||--o{ POSTS : writes
+    PROFILES {
+        string id PK "ID người dùng"
+        string email
+        int level "Cấp độ"
+        int xp "Điểm kinh nghiệm"
+    }
+
+    POSTS ||--o{ COMMENTS : has
+    POSTS ||--o{ APPROVALS : cho_duyet
+    POSTS {
+        string id PK
+        string content "Nội dung bài"
+        string status "Pending / Approved"
+    }
+
+    CONVERSATIONS ||--o{ MESSAGES : contains
+    CONVERSATIONS {
+        string id PK
+        timestamptz updated_at
+    }
+
+    MESSAGES {
+        string content "Nội dung chat"
+        string sender_id FK "Người gửi"
+    }
+```
+
+---
+
+## 5. Hạ Tầng Kỹ Thuật (Deployment)
+
+Website đang chạy ở đâu và như thế nào?
+
+*   **Frontend:** Viết bằng **Next.js**, chạy trên VPS Ubuntu.
+*   **Database:** Thuê dịch vụ **Supabase (Cloud)**.
+*   **VPS:** Máy chủ ảo chạy **Nginx** để điều hướng traffic.
+
+```mermaid
+graph TD
+    User((Người dùng)) -->|Truy cập tulanh.online| CF[Cloudflare / DNS]
+    CF -->|Trỏ về IP| VPS[VPS Ubuntu (43.228.214.174)]
+    
+    subgraph "Bên trong VPS"
+        Nginx[Nginx Web Server] -->|Reverse Proxy| PM2[PM2 Process Manager]
+        PM2 -->|Chạy| NextApps[Next.js App (Port 3000)]
+    end
+    
+    NextApps -->|Lấy dữ liệu| DB[(Supabase Database)]
+```
+
+---
+
+## 6. Tổng Kết
+
+Dự án **Tulanh Social** là một hệ thống khép kín, tự động hóa cao:
+1.  **Tự động Duyệt bài** dựa trên vote.
+2.  **Tự động Thưởng điểm** khi tương tác.
+3.  **Chat Realtime** để giữ chân người dùng.
+4.  **Hạ tầng VPS riêng** giúp chủ động quản lý dữ liệu.
+
+    </script>
+
+    <script>
+        // Render Markdown
+        const markdownInput = document.getElementById('raw-markdown').innerHTML;
+        const contentDiv = document.getElementById('content');
+        contentDiv.innerHTML = marked.parse(markdownInput);
+    </script>
+</body>
+
+</html>
