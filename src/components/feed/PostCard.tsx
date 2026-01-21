@@ -5,7 +5,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageSquare, Share2, MoreHorizontal, Send, Check, X, ThumbsUp, Lock } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, Send, Check, X, ThumbsUp, Lock, Trash2, Ban, Flag } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UI_Post } from "@/hooks/usePosts";
 import { createClient } from "@/lib/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -16,6 +23,8 @@ import { useGamification } from "@/context/GamificationContext";
 interface PostCardProps {
     post: UI_Post;
     onToggleLike: (postId: string, currentStatus: boolean) => void;
+    onDeletePost?: (postId: string) => Promise<void>;
+    onBlockUser?: (userId: string) => Promise<void>;
 }
 
 interface Comment {
@@ -28,7 +37,7 @@ interface Comment {
     };
 }
 
-export function PostCard({ post, onToggleLike }: PostCardProps) {
+export function PostCard({ post, onToggleLike, onDeletePost, onBlockUser }: PostCardProps) {
     const { user } = useSupabaseAuth();
     const [showComments, setShowComments] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
@@ -36,6 +45,7 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
     const [commentText, setCommentText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [localCommentsCount, setLocalCommentsCount] = useState(post.comments);
+    const [isDeleted, setIsDeleted] = useState(false);
 
     // Approval System State
     const [approvalVotes, setApprovalVotes] = useState(0);
@@ -109,6 +119,52 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
             toast.success("Voted to approve!");
         } else {
             toast.error("Failed to vote");
+        }
+    };
+
+    // Admin: Delete post
+    const handleDeletePost = async () => {
+        if (!isAdmin && !isAuthor) return;
+
+        if (onDeletePost) {
+            await onDeletePost(post.id);
+            setIsDeleted(true);
+            return;
+        }
+
+        // Fallback: delete directly
+        const { error } = await supabase
+            .from('posts')
+            .delete()
+            .eq('id', post.id);
+
+        if (!error) {
+            setIsDeleted(true);
+            toast.success("Post deleted successfully!");
+        } else {
+            toast.error("Failed to delete post");
+        }
+    };
+
+    // Admin: Block user
+    const handleBlockUser = async () => {
+        if (!isAdmin) return;
+
+        if (onBlockUser) {
+            await onBlockUser(post.user.id);
+            return;
+        }
+
+        // Fallback: Update user profile to blocked status
+        const { error } = await supabase
+            .from('profiles')
+            .update({ status: 'blocked' })
+            .eq('id', post.user.id);
+
+        if (!error) {
+            toast.success(`User ${post.user.name} has been blocked!`);
+        } else {
+            toast.error("Failed to block user");
         }
     };
 
@@ -253,6 +309,11 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
         return null; // Don't render rejected posts for normal users
     }
 
+    // If deleted, hide the post
+    if (isDeleted) {
+        return null;
+    }
+
     return (
         <Card className="overflow-hidden border-border/60">
             {postStatus === 'pending' && (
@@ -312,9 +373,53 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
                         </div>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        {/* Author or Admin can delete */}
+                        {(isAuthor || isAdmin) && (
+                            <DropdownMenuItem
+                                onClick={handleDeletePost}
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                {isAdmin && !isAuthor ? 'Xóa bài (Admin)' : 'Xóa bài'}
+                            </DropdownMenuItem>
+                        )}
+
+                        {/* Admin only: Block user */}
+                        {isAdmin && !isAuthor && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={handleBlockUser}
+                                    className="text-orange-600 focus:text-orange-600 focus:bg-orange-50 cursor-pointer"
+                                >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Block người dùng
+                                </DropdownMenuItem>
+                            </>
+                        )}
+
+                        {/* Everyone can report */}
+                        {!isAuthor && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() => toast.info("Đã ghi nhận báo cáo của bạn")}
+                                    className="cursor-pointer"
+                                >
+                                    <Flag className="h-4 w-4 mr-2" />
+                                    Báo cáo bài viết
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </CardHeader>
             <CardContent className="p-4 pt-2">
                 {post.title && (

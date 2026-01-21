@@ -184,6 +184,41 @@ export default function ClassPage({ params }: { params: Promise<{ slug: string }
         }
     };
 
+    const handleRejectMember = async (memberId: string) => {
+        const { error } = await supabase
+            .from('community_members')
+            .delete()
+            .eq('id', memberId);
+
+        if (!error) {
+            toast.success("Member request rejected!");
+            setPendingMembers(prev => prev.filter(p => p.id !== memberId));
+        } else {
+            toast.error("Failed to reject member");
+        }
+    };
+
+    const handleBlockMember = async (memberId: string, userId: string) => {
+        // Remove from community
+        await supabase
+            .from('community_members')
+            .delete()
+            .eq('id', memberId);
+
+        // Mark user as blocked in profiles
+        const { error } = await supabase
+            .from('profiles')
+            .update({ status: 'blocked' })
+            .eq('id', userId);
+
+        if (!error) {
+            toast.success("Member has been blocked!");
+            setPendingMembers(prev => prev.filter(p => p.id !== memberId));
+        } else {
+            toast.error("Failed to block member");
+        }
+    };
+
     const handleApprovePost = async (postId: string) => {
         const { error } = await supabase
             .from('posts')
@@ -213,7 +248,9 @@ export default function ClassPage({ params }: { params: Promise<{ slug: string }
 
     const isMember = memberStatus?.status === 'approved';
     const isPending = memberStatus?.status === 'pending';
-    const isAdmin = memberStatus?.role === 'admin';
+    const isCommunityAdmin = memberStatus?.role === 'admin';
+    const isGlobalAdmin = user?.email === 'vutrongvtv24@gmail.com';
+    const isAdmin = isCommunityAdmin || isGlobalAdmin;
 
     // Filter posts for Admin (show pending) vs Member (show only approved - handled by API/Hook mostly but let's double check)
     // Actually usePosts returns what query gives. We modified query to show pending if admin in RLS? 
@@ -350,7 +387,31 @@ export default function ClassPage({ params }: { params: Promise<{ slug: string }
                                                         <div className="text-xs text-muted-foreground">Level {m.profiles?.level}</div>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" onClick={() => handleApproveMember(m.id)}>Approve</Button>
+                                                <div className="flex gap-1">
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                                        onClick={() => handleApproveMember(m.id)}
+                                                    >
+                                                        <CheckCircle className="h-3 w-3 mr-1" /> Approve
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => handleRejectMember(m.id)}
+                                                    >
+                                                        <XCircle className="h-3 w-3 mr-1" /> Reject
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => handleBlockMember(m.id, m.user_id)}
+                                                    >
+                                                        Block
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))
                                     )}
