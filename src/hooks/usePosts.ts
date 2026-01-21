@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useSupabaseAuth } from "./useSupabaseAuth";
 import { Database } from "@/types/supabase";
+import { getRankByLevel } from "@/config/ranks";
 
 type Post = Database["public"]["Tables"]["posts"]["Row"] & {
     profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
@@ -196,7 +197,7 @@ export function usePosts(communitySlug?: string) {
                     name: post.profiles?.full_name || "Anonymous",
                     handle: "@user",
                     avatar: post.profiles?.avatar_url || "",
-                    title: `Level ${post.profiles?.level || 1} Builder`,
+                    title: getRankByLevel(post.profiles?.level || 1).nameVi,
                 },
                 content: post.content,
                 likes: post.likes_count || 0,
