@@ -1,18 +1,14 @@
 {
     "updated_at": "2026-01-27T12:08:00+07:00",
     "working_on": {
-        "feature": "Community Feed Refactor",
-        "task": "Cleanup & Documentation",
+        "feature": "Deployment",
+        "task": "VPS Setup & Optimization",
         "status": "complete",
         "files": [
-            "src/components/feed/Feed.tsx",
-            "src/components/feed/CreatePost.tsx",
-            "src/components/layout/SidebarLeft.tsx",
-            "src/components/layout/SidebarRight.tsx",
-            "supabase/migrations/20260127_add_topic_to_posts.sql",
-            "src/app/globals.css"
+            "docs/DEPLOYMENT_GUIDE.md",
+            "package.json"
         ],
-        "notes": "Added topic filtering (Youtube/MMO/Share). Implemented Deep Glass Theme. Fixed accessibility issues on badges."
+        "notes": "Deployed to tulanh.online. Configured Nginx Reverse Proxy, SSL, and PM2. Created update-web script."
     },
     "pending_tasks": [
         {

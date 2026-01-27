@@ -6,7 +6,7 @@
     "project": {
         "name": "Builder Ecosystem Clone",
         "type": "Community & Education Platform",
-        "status": "In Development"
+        "status": "Deployed (Production)"
     },
     "tech_stack": {
         "frontend": {
@@ -23,6 +23,13 @@
         "database": {
             "type": "PostgreSQL (via Supabase)",
             "orm": "None (Raw SQL / Supabase Client)"
+        },
+        "deployment": {
+            "server": "VPS (Ubuntu 22.04)",
+            "panel": "aaPanel",
+            "web_server": "Nginx (Reverse Proxy)",
+            "process_manager": "PM2",
+            "node_version": "20.x"
         }
     },
     "database_schema": {

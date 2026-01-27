@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - **Rank Badges:** Enhanced rank badges with better contrast and animations.
 - **Database:** Added `topic` column to `posts` table (Migration: `20260127_add_topic_to_posts.sql`).
 - **Internationalization:** Complete English and Vietnamese translations for Feed, Create Post, and Todo List features.
+- **Deployment:** Successfully deployed to VPS (Ubuntu/aaPanel) with Nginx Reverse Proxy and SSL.
 
 ### Changed
 - **Sidebar:** Removed `Youtube` and `Tricks & Courses` sub-menus to simplify navigation.
