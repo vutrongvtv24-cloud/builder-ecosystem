@@ -60,7 +60,7 @@ export function SidebarRight() {
                             <div className="font-bold text-base">
                                 {user.name}
                             </div>
-                            <div className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block mt-1 ${getRankByLevel(level).color} bg-secondary`}>
+                            <div className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block mt-1 text-white bg-muted border border-border/50`}>
                                 {getRankByLevel(level).nameVi} • Lv.{level}
                             </div>
                         </div>
